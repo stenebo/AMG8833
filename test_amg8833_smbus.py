@@ -48,7 +48,7 @@ import smbus
 # Check bus number:
 # ls -l /dev/i2c*
 # Usually 0 for Raspberry Pi 256 MB models and 1 for 512 MB models
-busnr = 1
+busnr = 3
 
 # Check bus address with i2cdetect -y <busnr>
 # By default, the I2C address is 0x69. If you solder the jumper on 
@@ -129,11 +129,15 @@ if __name__ == '__main__':
 
 	# Let the sensor initialize
 	time.sleep(0.1)
-
+	roundCount = 0
+	
 	# Read temp values
 	while True:
 		os.system('clear')
+		UTSM_start = time.time()
 		buf = list()
+		roundCount += 1
+		
 		# Request register number 0x80, 0x82 and onward
 		for register in range(REG_T01L, (REG_T64H + 1), 2):
 			# Let smbus handle the communication stuff
@@ -155,47 +159,47 @@ if __name__ == '__main__':
 		print ('Min: %s°C\tMax: %s°C\tAvg: %s°C ' % 
 		('\033[96m' + str(bufMin) + '\033[0m', '\033[91m' + str(bufMax) + '\033[0m', bufAvg))
 		
-		# Output pixel window to terminal
+		# Show temp values for each pixel
 		# Pixel array index
 		px = 0
-		# y coordinate starting on top row
-		y = 1
-		for r in range(0, 8):
+		for y in range(1, 9):
 			lstRow = list()
-			# x coordinate starting on left column
-			x = 1
-			for c in range(px, px+8):
-				#out = ('x: %d y: %d %s°C' % (x, y, buf[c]))
-				#out = ('%s°C' % (buf[c]))
-				out = ('%s' % (buf[c]))
+			
+			for x in range(1, 9):
+				#out = ('x: %d y: %d %s°C' % (x, y, buf[px]))
+				#out = ('%s°C' % (buf[px]))
+				out = ('%s' % (buf[px]))
 				
-				if buf[c] == bufMax:
+				if buf[px] == bufMax:
 					# Hottest color -red
 					lstRow.append('\033[91m' + out + '\033[0m')
 					
-				elif buf[c] >= hi:
+				elif buf[px] >= hi:
 					# Warm color -yellow
 					lstRow.append('\033[93m' + out + '\033[0m')
 				
-				elif buf[c] == bufMin:
+				elif buf[px] == bufMin:
 					# Coldest color -cyan
 					lstRow.append('\033[96m' + out + '\033[0m')
 						
-				elif buf[c] <= low:
+				elif buf[px] <= low:
 					# Cool color -blue
 					lstRow.append('\033[94m' + out + '\033[0m')
 				else:
 					# Std color
 					lstRow.append(out)
 					
-				x += 1
+				px += 1
 				
 			# Output formatted row
 			print ('\t'.join(lstRow))
 			print ('')
-			px += 8
-			y += 1
 		
+		# Calculate total cycle time
+		cycle_time = round(time.time() - UTSM_start, 3)
+		
+		if roundCount % 1 == 0:	
+			print('Round %d, cycle time %s s' % (roundCount, cycle_time))
 		#sys.exit(0)
-		time.sleep(1) # Can do 10 fps (0.1) with these settings
+		time.sleep(1.0) # Can do 10 fps (0.1) with these settings
 
